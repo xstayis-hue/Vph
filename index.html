@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Vph · Phoenix</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0e12;
+  --card:#12151c;
+  --line:#2a3140;
+  --text:#c8d0dc;
+  --mute:#6b7385;
+  --accent:#e8a838;
+  --accent-dim:rgba(232,168,56,.15);
+  --ok:#3dcea5;
+  --bad:#e07070;
+}
+body{
+  min-height:100vh;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--text);
+  padding:16px 16px calc(28px + env(safe-area-inset-bottom));
+  -webkit-text-size-adjust:100%;
+}
+/* grid floor — не matrix */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.35;
+  background-image:
+    linear-gradient(rgba(42,49,64,.5) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(42,49,64,.5) 1px,transparent 1px);
+  background-size:28px 28px;
+  mask-image:radial-gradient(ellipse at 50% 0%,#000 0%,transparent 75%);
+}
+.wrap{position:relative;z-index:1;max-width:420px;margin:0 auto}
+.top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:20px;padding-top:4px;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.mark{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--accent-dim);border:1px solid rgba(232,168,56,.35);
+  display:flex;align-items:center;justify-content:center;
+}
+.mark svg{width:20px;height:20px}
+.brand h1{font-size:18px;font-weight:650;letter-spacing:.5px;color:#fff}
+.brand p{font-size:11px;color:var(--mute);margin-top:1px}
+.chip{
+  font-size:10px;padding:5px 10px;border-radius:999px;
+  border:1px solid var(--line);color:var(--mute);background:rgba(0,0,0,.25);
+}
+.panel{
+  background:var(--card);border:1px solid var(--line);border-radius:18px;
+  padding:18px;margin-bottom:12px;
+  box-shadow:0 12px 40px rgba(0,0,0,.35);
+}
+.panel h2{
+  font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--mute);margin-bottom:14px;
+}
+.hero{
+  text-align:center;padding:8px 0 4px;
+}
+.hero .state{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:15px;font-weight:600;color:#fff;margin-bottom:8px;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:#555}
+.dot.on{background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.dot.off{background:var(--bad);box-shadow:0 0 8px rgba(224,112,112,.4)}
+.hero .until{font-size:13px;color:var(--mute)}
+.hero .until strong{color:var(--accent);font-weight:600}
+.plan{
+  display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;
+  padding:14px;border-radius:14px;margin-bottom:8px;cursor:pointer;
+  border:1px solid var(--line);background:rgba(0,0,0,.2);
+  transition:border-color .2s,background .2s;
+}
+.plan:last-of-type{margin-bottom:0}
+.plan.selected{
+  border-color:rgba(232,168,56,.55);background:var(--accent-dim);
+}
+.plan .name{font-size:14px;font-weight:600;color:#fff}
+.plan .meta{font-size:11px;color:var(--mute);grid-column:1}
+.plan .price{font-size:16px;font-weight:700;color:var(--accent);grid-row:1/span 2;align-self:center}
+.plan .price small{font-size:11px;font-weight:500;color:var(--mute)}
+.btn{
+  width:100%;margin-top:14px;padding:15px;border:none;border-radius:14px;
+  font-size:14px;font-weight:650;font-family:inherit;cursor:pointer;
+  background:var(--accent);color:#1a1208;
+}
+.btn:active{transform:scale(.98)}
+.btn-secondary{
+  width:100%;padding:13px;margin-top:8px;border-radius:14px;font-family:inherit;
+  font-size:13px;font-weight:600;cursor:pointer;
+  background:transparent;border:1px solid var(--line);color:var(--text);
+}
+.btn-secondary:disabled{opacity:.35;cursor:not-allowed}
+.key{
+  margin-top:12px;padding:12px;border-radius:12px;font-size:11px;line-height:1.5;
+  word-break:break-all;background:rgba(0,0,0,.35);border:1px solid var(--line);
+  color:var(--mute);display:none;max-height:72px;overflow-y:auto;
+}
+.key.show{display:block}
+.steps{list-style:none;counter-reset:s}
+.steps li{
+  counter-increment:s;position:relative;padding:10px 0 10px 36px;
+  font-size:13px;color:var(--text);border-bottom:1px solid rgba(42,49,64,.6);
+  line-height:1.4;
+}
+.steps li:last-child{border-bottom:none}
+.steps li::before{
+  content:counter(s);position:absolute;left:0;top:10px;
+  width:24px;height:24px;border-radius:8px;font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--accent-dim);color:var(--accent);border:1px solid rgba(232,168,56,.25);
+}
+.steps b{color:#fff;font-weight:600}
+.foot{text-align:center;font-size:10px;color:#3a4050;margin-top:18px;letter-spacing:.5px}
+#toast{
+  display:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+  z-index:50;padding:12px 18px;border-radius:12px;font-size:13px;
+  background:#1a1e28;border:1px solid var(--line);color:#fff;
+  box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:90%;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="brand">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#e8a838" stroke-width="1.8">
+          <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"/>
+          <path d="M12 11v4M12 8.5h.01"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Vph</h1>
+        <p>Phoenix access</p>
+      </div>
+    </div>
+    <div class="chip" id="uid-chip">id · —</div>
+  </div>
+
+  <div class="panel hero">
+    <h2 style="text-align:center">Подписка</h2>
+    <div class="state"><span class="dot off" id="dot"></span><span id="state-text">Не активна</span></div>
+    <div class="until">до <strong id="until">—</strong></div>
+  </div>
+
+  <div class="panel">
+    <h2>Тариф</h2>
+    <div class="plan selected" data-days="30" data-price="299" onclick="selectPlan(this)">
+      <div class="name">30 дней</div>
+      <div class="price">299 <small>₽</small></div>
+      <div class="meta">до 5 устройств · безлимит</div>
+    </div>
+    <div class="plan" data-days="90" data-price="749" onclick="selectPlan(this)">
+      <div class="name">90 дней</div>
+      <div class="price">749 <small>₽</small></div>
+      <div class="meta">выгоднее на 3 мес</div>
+    </div>
+    <div class="plan" data-days="180" data-price="1290" onclick="selectPlan(this)">
+      <div class="name">180 дней</div>
+      <div class="price">1290 <small>₽</small></div>
+      <div class="meta">полгода доступа</div>
+    </div>
+    <button class="btn" type="button" onclick="requestAccess()">Оформить</button>
+  </div>
+
+  <div class="panel">
+    <h2>Ключ Happ</h2>
+    <button class="btn-secondary" type="button" id="copy-btn" disabled onclick="copyKey()">Скопировать ссылку</button>
+    <div class="key" id="key-box"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Подключение</h2>
+    <ol class="steps">
+      <li>Установи <b>Happ</b> на телефон или ПК</li>
+      <li>В приложении нажми <b>+</b> → по ссылке</li>
+      <li>Вставь ключ из блока выше</li>
+      <li>Выбери узел и включи соединение</li>
+    </ol>
+  </div>
+
+  <div class="foot">v0.1 · Vph · PXAX ecosystem</div>
+</div>
+<div id="toast"></div>
+
+<script>
+const APPS_SCRIPT_URL='';
+const storage=(()=>{try{return localStorage}catch{const d={};return{getItem:k=>d[k]||null,setItem:(k,v)=>{d[k]=v}}}})();
+
+let tgUser=null,selected={days:30,price:299};
+if(window.Telegram?.WebApp){Telegram.WebApp.ready();Telegram.WebApp.expand();tgUser=Telegram.WebApp.initDataUnsafe?.user||null}
+
+const uid=tgUser?.id?String(tgUser.id):(storage.getItem('vph_uid')||('L'+Math.floor(10000+Math.random()*90000)));
+storage.setItem('vph_uid',uid);
+document.getElementById('uid-chip').textContent=tgUser?.username?('@'+tgUser.username):('id · '+uid);
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
+function selectPlan(el){document.querySelectorAll('.plan').forEach(p=>p.classList.remove('selected'));el.classList.add('selected');selected={days:+el.dataset.days,price:+el.dataset.price}}
+
+function loadSub(){
+  const raw=storage.getItem('vph_sub_'+uid);
+  const dot=document.getElementById('dot'),st=document.getElementById('state-text'),until=document.getElementById('until');
+  const keyBox=document.getElementById('key-box'),copyBtn=document.getElementById('copy-btn');
+  if(!raw){dot.className='dot off';st.textContent='Не активна';until.textContent='—';keyBox.classList.remove('show');copyBtn.disabled=true;return null}
+  const sub=JSON.parse(raw);const end=new Date(sub.expiresAt);const active=end.getTime()>Date.now()&&sub.key;
+  if(active){dot.className='dot on';st.textContent='Активна';until.textContent=end.toLocaleDateString('ru-RU');keyBox.textContent=sub.key;keyBox.classList.add('show');copyBtn.disabled=false}
+  else{dot.className='dot off';st.textContent='Истекла';until.textContent=end.toLocaleDateString('ru-RU');keyBox.classList.remove('show');copyBtn.disabled=true}
+  return sub;
+}
+function saveSub(sub){storage.setItem('vph_sub_'+uid,JSON.stringify(sub));loadSub()}
+
+function requestAccess(){
+  try{Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium')}catch(e){}
+  if(APPS_SCRIPT_URL){fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'subscribe',telegramId:uid,username:tgUser?.username||'',days:selected.days,price:selected.price,timestamp:new Date().toISOString()})}).catch(()=>{})}
+  const demoKey=storage.getItem('vph_demo_key')||'';
+  const expiresAt=new Date(Date.now()+selected.days*864e5).toISOString();
+  if(!demoKey){toast('Оплата и выдача ключа — после настройки панели');saveSub({expiresAt,key:'',plan:selected.days,price:selected.price,pending:true});return}
+  saveSub({expiresAt,key:demoKey,plan:selected.days,price:selected.price,pending:false});toast('Доступ активирован');
+}
+function copyKey(){const sub=loadSub();if(!sub?.key)return;navigator.clipboard.writeText(sub.key).then(()=>{toast('Скопировано');try{Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success')}catch(e){}})}
+
+loadSub();
+</script>
+</body>
+</html>
