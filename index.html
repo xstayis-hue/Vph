@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Vph · Phoenix</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090d;
+  --card:rgba(16,20,28,.55);
+  --line:rgba(80,120,140,.18);
+  --text:#b8c4d0;
+  --mute:#5a6575;
+  --accent:#c9a04a;
+  --accent-dim:rgba(201,160,74,.14);
+  --cyan:rgba(0,210,220,.12);
+  --ok:#3dcea5;
+  --bad:#c06060;
+  --idle:#6a7080;
+}
+html,body{min-height:100%}
+body{
+  font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--text);
+  padding:16px 16px calc(36px + env(safe-area-inset-bottom));
+  -webkit-text-size-adjust:100%;position:relative;overflow-x:hidden;
+}
+/* depth: light entrance → dark shaft */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 90% 42% at 50% -8%,rgba(0,180,200,.09),transparent 55%),
+    radial-gradient(ellipse 70% 50% at 50% 115%,rgba(0,0,0,.92),transparent 48%),
+    linear-gradient(180deg,#0e1218 0%,#080a0e 45%,#040508 100%);
+}
+/* fog edges */
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 100% 100% at 50% 50%,transparent 35%,rgba(0,0,0,.55) 100%),
+    linear-gradient(90deg,rgba(0,0,0,.35),transparent 18%,transparent 82%,rgba(0,0,0,.35));
+}
+/* infinite corridor floor */
+.corridor{
+  position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+}
+.corridor-grid{
+  position:absolute;left:50%;bottom:-5%;width:160%;height:70%;
+  transform:translateX(-50%) perspective(320px) rotateX(62deg);
+  transform-origin:center top;
+  background-image:
+    linear-gradient(rgba(0,180,200,.07) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,180,200,.07) 1px,transparent 1px);
+  background-size:36px 36px;
+  mask-image:linear-gradient(180deg,transparent 0%,#000 25%,#000 75%,transparent 100%);
+  opacity:.55;
+}
+.corridor-vanish{
+  position:absolute;left:50%;top:38%;width:2px;height:28%;
+  transform:translateX(-50%);
+  background:linear-gradient(180deg,transparent,rgba(0,200,210,.15),transparent);
+  opacity:.4;
+}
+.noise{
+  position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.04;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:160px;
+}
+.wrap{position:relative;z-index:1;max-width:420px;margin:0 auto}
+
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-top:4px}
+.brand{display:flex;align-items:center;gap:10px}
+.mark{
+  width:38px;height:38px;border-radius:12px;
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(0,200,210,.2);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 20px rgba(0,200,210,.08),inset 0 1px 0 rgba(255,255,255,.04);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+.mark svg{width:20px;height:20px}
+.brand h1{font-size:18px;font-weight:650;letter-spacing:1px;color:#e8eef4}
+.brand .sub{
+  font-size:10px;letter-spacing:1.5px;color:rgba(0,200,210,.55);
+  text-transform:lowercase;margin-top:2px;
+}
+.chip{
+  font-size:10px;padding:6px 10px;border-radius:20px;
+  border:1px solid rgba(0,200,210,.15);color:var(--mute);
+  background:rgba(0,0,0,.3);backdrop-filter:blur(8px);
+}
+
+/* liquid glass panels */
+.panel{
+  background:var(--card);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+  padding:16px 14px;
+  margin-bottom:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.05);
+  backdrop-filter:blur(20px) saturate(140%);
+  -webkit-backdrop-filter:blur(20px) saturate(140%);
+  position:relative;
+}
+.panel h2{
+  font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--mute);margin-bottom:12px;
+}
+
+/* air moods by subscription state on hero */
+.hero{text-align:center;padding:20px 14px 18px;transition:border-color .4s,box-shadow .4s,background .4s}
+.hero.air-idle{
+  border-color:rgba(100,110,130,.2);
+  box-shadow:0 8px 32px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.03);
+  background:rgba(14,16,22,.5);
+}
+.hero.air-on{
+  border-color:rgba(201,160,74,.35);
+  box-shadow:0 8px 36px rgba(0,0,0,.28),0 0 28px rgba(201,160,74,.12),inset 0 1px 0 rgba(255,255,255,.06);
+  background:rgba(28,24,16,.45);
+}
+.hero.air-off{
+  border-color:rgba(160,80,80,.3);
+  box-shadow:0 8px 32px rgba(0,0,0,.35),0 0 18px rgba(160,60,60,.08);
+  background:rgba(22,12,14,.5);
+}
+.hero.air-on .key-card{animation:key-breathe 4s ease-in-out infinite}
+@keyframes key-breathe{
+  0%,100%{box-shadow:0 0 0 0 transparent,inset 0 1px 0 rgba(255,255,255,.06)}
+  50%{box-shadow:0 0 18px rgba(201,160,74,.12),inset 0 1px 0 rgba(255,255,255,.08)}
+}
+
+.state{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:15px;font-weight:600;color:#e0e6ee;margin-bottom:6px;
+}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--idle)}
+.dot.idle{background:var(--idle);box-shadow:0 0 0 0 transparent}
+.dot.on{background:var(--accent);box-shadow:0 0 10px rgba(201,160,74,.7);animation:dot-pulse 1.6s ease-in-out infinite}
+.dot.off{background:var(--bad);box-shadow:0 0 8px rgba(192,96,96,.4)}
+@keyframes dot-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.until{font-size:12px;color:var(--mute)}
+.until strong{color:var(--text);font-weight:600}
+
+/* tunnel strip no % */
+.tunnel{
+  margin:14px auto 0;max-width:220px;height:3px;
+  background:rgba(0,200,210,.06);border-radius:3px;overflow:hidden;
+  border:1px solid rgba(0,200,210,.1);
+}
+.tunnel-fill{
+  height:100%;width:32%;
+  background:linear-gradient(90deg,transparent,rgba(0,200,210,.45),rgba(201,160,74,.35),transparent);
+  animation:tunnel-move 2.8s ease-in-out infinite;
+}
+.hero.air-on .tunnel-fill{
+  background:linear-gradient(90deg,transparent,rgba(201,160,74,.55),transparent);
+  animation-duration:2.2s;
+}
+.hero.air-off .tunnel-fill{opacity:.35;animation-duration:4s}
+@keyframes tunnel-move{0%{transform:translateX(-120%)}100%{transform:translateX(380%)}}
+
+.plan{
+  padding:12px 12px;border-radius:12px;margin-bottom:8px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.07);background:rgba(0,0,0,.22);
+  transition:border-color .2s,background .2s,box-shadow .2s;
+}
+.plan:active{transform:scale(.99)}
+.plan.selected{
+  border-color:rgba(201,160,74,.4);
+  background:rgba(201,160,74,.08);
+  box-shadow:0 0 16px rgba(201,160,74,.08);
+}
+.plan .name{font-size:14px;font-weight:600;color:#e4eaf0}
+.plan .price{font-size:15px;color:var(--accent);font-weight:700;margin-top:2px}
+.plan .price small{font-size:11px;font-weight:500;opacity:.8}
+.plan .meta{font-size:11px;color:var(--mute);margin-top:4px}
+
+.btn{
+  width:100%;margin-top:12px;padding:15px;border:none;border-radius:12px;
+  font-size:14px;font-weight:650;font-family:inherit;cursor:pointer;
+  background:linear-gradient(135deg,#d4a84e,#b88830);color:#140f08;
+  box-shadow:0 4px 24px rgba(201,160,74,.22);
+}
+.btn:active{transform:scale(.98);opacity:.92}
+
+/* glass key card */
+.key-card{
+  margin-top:10px;padding:14px 12px;border-radius:12px;display:none;
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(0,200,210,.15);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+.key-card.show{display:block}
+.key-card .label{font-size:9px;letter-spacing:1.2px;color:rgba(0,200,210,.5);margin-bottom:8px;text-transform:uppercase}
+.key-card .serial{
+  font-family:ui-monospace,'Cascadia Code','Courier New',monospace;
+  font-size:11px;line-height:1.55;word-break:break-all;color:#c8d4dc;
+  max-height:80px;overflow-y:auto;
+}
+
+.btn-secondary{
+  width:100%;padding:13px;margin-top:8px;border-radius:12px;font-family:inherit;
+  font-size:13px;font-weight:600;cursor:pointer;
+  background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.1);color:var(--text);
+}
+.btn-secondary:disabled{opacity:.35;cursor:not-allowed}
+.btn-secondary:not(:disabled):active{opacity:.9}
+
+/* Happ secondary door */
+.happ-panel{
+  border-color:rgba(255,255,255,.06);
+  background:rgba(12,14,18,.4);
+  box-shadow:0 6px 24px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.03);
+}
+.happ-panel h2{color:#3a4555}
+.store-row{display:flex;gap:8px;margin-top:4px}
+.store-btn{
+  flex:1;padding:11px 8px;border-radius:12px;font-family:inherit;font-size:12px;font-weight:600;
+  cursor:pointer;text-align:center;
+  border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.28);color:#8a94a2;
+  text-decoration:none;display:block;
+}
+.store-btn:active{opacity:.85}
+.store-btn span{display:block;font-size:10px;color:#4a5565;font-weight:500;margin-top:2px}
+.happ-hint{font-size:11px;color:#3a4555;margin-top:10px;line-height:1.4;text-align:center}
+
+.steps{list-style:none;counter-reset:s}
+.steps li{
+  counter-increment:s;position:relative;padding:11px 0 11px 36px;
+  font-size:13px;color:var(--text);border-bottom:1px solid rgba(40,48,58,.6);line-height:1.45;
+}
+.steps li:last-child{border-bottom:none}
+.steps li::before{
+  content:counter(s);position:absolute;left:0;top:11px;width:24px;height:24px;border-radius:8px;
+  font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.35);color:var(--mute);border:1px solid rgba(0,200,210,.12);
+}
+.steps b{color:#d0d8e0;font-weight:600}
+
+.foot{text-align:center;font-size:10px;color:#2a323c;margin-top:16px;letter-spacing:1px;margin-bottom:8px}
+
+/* bottom log */
+.term-log{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;
+  padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,transparent,rgba(0,0,0,.7));
+  pointer-events:none;font-size:10px;color:#2a5a5a;letter-spacing:.4px;text-align:center;
+}
+.term-log .tl-dim{color:#1a3a3a}
+.term-log .tl-cursor{animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+
+#toast{
+  display:none;position:fixed;left:50%;bottom:52px;transform:translateX(-50%);z-index:50;
+  padding:12px 18px;border-radius:12px;font-size:13px;
+  background:rgba(16,20,28,.92);border:1px solid rgba(0,200,210,.2);
+  color:#c8d0dc;box-shadow:0 12px 40px rgba(0,0,0,.55);max-width:90%;
+  backdrop-filter:blur(12px);
+}
+</style>
+</head>
+<body>
+<div class="corridor" aria-hidden="true">
+  <div class="corridor-grid"></div>
+  <div class="corridor-vanish"></div>
+</div>
+<div class="noise"></div>
+
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="rgba(0,200,210,.75)" stroke-width="1.8">
+          <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"/>
+          <path d="M12 11v4M12 8.5h.01"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Vph</h1>
+        <div class="sub" id="node-sub">node · sealed</div>
+      </div>
+    </div>
+    <div class="chip" id="uid-chip">id · —</div>
+  </div>
+
+  <div class="panel hero air-idle" id="hero">
+    <h2 style="text-align:center;margin-bottom:10px">Подписка</h2>
+    <div class="state"><span class="dot idle" id="dot"></span><span id="state-text">Не активна</span></div>
+    <div class="until">до <strong id="until">—</strong></div>
+    <div class="tunnel"><div class="tunnel-fill"></div></div>
+  </div>
+
+  <div class="panel">
+    <h2>Тариф</h2>
+    <div class="plan selected" data-days="30" data-price="299" onclick="selectPlan(this)">
+      <div class="name">30 дней</div>
+      <div class="price">299 <small>₽</small></div>
+      <div class="meta">до 5 устройств · безлимит</div>
+    </div>
+    <div class="plan" data-days="90" data-price="749" onclick="selectPlan(this)">
+      <div class="name">90 дней</div>
+      <div class="price">749 <small>₽</small></div>
+      <div class="meta">выгоднее · 3 месяца</div>
+    </div>
+    <div class="plan" data-days="180" data-price="1290" onclick="selectPlan(this)">
+      <div class="name">180 дней</div>
+      <div class="price">1290 <small>₽</small></div>
+      <div class="meta">полгода доступа</div>
+    </div>
+    <button class="btn" type="button" onclick="requestAccess()">Оформить</button>
+  </div>
+
+  <div class="panel">
+    <h2>Ключ узла</h2>
+    <button class="btn-secondary" type="button" id="copy-btn" disabled onclick="copyKey()">Скопировать ссылку</button>
+    <div class="key-card" id="key-box">
+      <div class="label">serial · happ link</div>
+      <div class="serial" id="key-serial"></div>
+    </div>
+  </div>
+
+  <div class="panel happ-panel">
+    <h2>Скачать Happ</h2>
+    <div class="store-row">
+      <a class="store-btn" href="#" onclick="openStore('android');return false">Google Play<span>Android</span></a>
+      <a class="store-btn" href="#" onclick="openStore('ios');return false">App Store<span>iPhone / iPad</span></a>
+    </div>
+    <p class="happ-hint">Официальный клиент Happ · Proxy Utility. В RU App Store иногда нет в поиске — откроется сайт разработчика.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Подключение</h2>
+    <ol class="steps">
+      <li>Установи <b>Happ</b> из магазина выше</li>
+      <li>В приложении нажми <b>+</b> → по ссылке</li>
+      <li>Вставь ключ из блока «Ключ узла»</li>
+      <li>Выбери узел и включи соединение</li>
+    </ol>
+  </div>
+
+  <div class="foot">v0.2 · Vph · corridor</div>
+</div>
+
+<div class="term-log"><span class="tl-dim">&gt;</span> <span id="term-log-txt">handshake…</span><span class="tl-cursor">_</span></div>
+<div id="toast"></div>
+
+<script>
+const APPS_SCRIPT_URL = '';
+const HAPP_ANDROID = 'https://play.google.com/store/apps/details?id=com.happproxy';
+const HAPP_IOS = 'https://www.happ.su/main';
+
+const storage = (() => {
+  try { return localStorage; } catch {
+    const d = {};
+    return { getItem: k => d[k] || null, setItem: (k, v) => { d[k] = v; } };
+  }
+})();
+
+let tgUser = null, selected = { days: 30, price: 299 };
+if (window.Telegram && Telegram.WebApp) {
+  try {
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
+    try { Telegram.WebApp.setHeaderColor('#07090d'); } catch (e) {}
+  } catch (e) {}
+  tgUser = Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user || null;
+}
+
+const uid = tgUser && tgUser.id
+  ? String(tgUser.id)
+  : (storage.getItem('vph_uid') || ('L' + Math.floor(10000 + Math.random() * 90000)));
+storage.setItem('vph_uid', uid);
+document.getElementById('uid-chip').textContent = tgUser && tgUser.username
+  ? ('@' + tgUser.username)
+  : ('id · ' + uid);
+
+const termLines = ['handshake…', 'path ok', 'tunnel idle…', 'node · sealed', 'await link…', 'cipher ready'];
+let termI = 0;
+function pushTerm(msg) {
+  const t = document.getElementById('term-log-txt');
+  if (t) t.textContent = msg;
+}
+setInterval(function () {
+  pushTerm(termLines[termI]);
+  termI = (termI + 1) % termLines.length;
+}, 3200);
+
+function toast(m) {
+  const t = document.getElementById('toast');
+  t.textContent = m;
+  t.style.display = 'block';
+  setTimeout(function () { t.style.display = 'none'; }, 2200);
+}
+function openLink(url) {
+  try {
+    if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
+      Telegram.WebApp.openLink(url);
+      return;
+    }
+  } catch (e) {}
+  window.open(url, '_blank', 'noopener');
+}
+function openStore(which) {
+  openLink(which === 'android' ? HAPP_ANDROID : HAPP_IOS);
+}
+
+function selectPlan(el) {
+  try {
+    if (Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
+      Telegram.WebApp.HapticFeedback.selectionChanged();
+    }
+  } catch (e) {}
+  document.querySelectorAll('.plan').forEach(function (p) { p.classList.remove('selected'); });
+  el.classList.add('selected');
+  selected = {
+    days: parseInt(el.getAttribute('data-days'), 10),
+    price: parseInt(el.getAttribute('data-price'), 10)
+  };
+  pushTerm('plan · ' + selected.days + 'd');
+}
+
+function setAir(mode) {
+  const hero = document.getElementById('hero');
+  const sub = document.getElementById('node-sub');
+  hero.classList.remove('air-idle', 'air-on', 'air-off');
+  if (mode === 'on') {
+    hero.classList.add('air-on');
+    sub.textContent = 'tunnel · live';
+  } else if (mode === 'off') {
+    hero.classList.add('air-off');
+    sub.textContent = 'node · expired';
+  } else {
+    hero.classList.add('air-idle');
+    sub.textContent = 'node · sealed';
+  }
+}
+
+function loadSub() {
+  const raw = storage.getItem('vph_sub_' + uid);
+  const dot = document.getElementById('dot');
+  const st = document.getElementById('state-text');
+  const until = document.getElementById('until');
+  const keyBox = document.getElementById('key-box');
+  const keySerial = document.getElementById('key-serial');
+  const copyBtn = document.getElementById('copy-btn');
+
+  if (!raw) {
+    dot.className = 'dot idle';
+    st.textContent = 'Не активна';
+    until.textContent = '—';
+    keyBox.classList.remove('show');
+    copyBtn.disabled = true;
+    setAir('idle');
+    return null;
+  }
+
+  const sub = JSON.parse(raw);
+  const end = new Date(sub.expiresAt);
+  const hasKey = !!(sub.key && String(sub.key).trim());
+  const notExpired = end.getTime() > Date.now();
+
+  if (hasKey && notExpired) {
+    dot.className = 'dot on';
+    st.textContent = 'Активна';
+    until.textContent = end.toLocaleDateString('ru-RU');
+    keySerial.textContent = sub.key;
+    keyBox.classList.add('show');
+    copyBtn.disabled = false;
+    setAir('on');
+  } else if (hasKey && !notExpired) {
+    dot.className = 'dot off';
+    st.textContent = 'Истекла';
+    until.textContent = end.toLocaleDateString('ru-RU');
+    keyBox.classList.remove('show');
+    copyBtn.disabled = true;
+    setAir('off');
+  } else {
+    dot.className = 'dot idle';
+    st.textContent = 'Не активна';
+    until.textContent = sub.expiresAt ? end.toLocaleDateString('ru-RU') : '—';
+    keyBox.classList.remove('show');
+    copyBtn.disabled = true;
+    setAir('idle');
+  }
+  return sub;
+}
+
+function saveSub(sub) {
+  storage.setItem('vph_sub_' + uid, JSON.stringify(sub));
+  loadSub();
+}
+
+function requestAccess() {
+  try {
+    if (Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
+      Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+    }
+  } catch (e) {}
+  pushTerm('request · pending');
+  if (APPS_SCRIPT_URL) {
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'subscribe',
+        telegramId: uid,
+        username: (tgUser && tgUser.username) || '',
+        days: selected.days,
+        price: selected.price,
+        timestamp: new Date().toISOString()
+      })
+    }).catch(function () {});
+  }
+  const demoKey = storage.getItem('vph_demo_key') || '';
+  const expiresAt = new Date(Date.now() + selected.days * 864e5).toISOString();
+  if (!demoKey) {
+    toast('Оплата и выдача ключа — после настройки панели');
+    saveSub({ expiresAt: expiresAt, key: '', plan: selected.days, price: selected.price, pending: true });
+    return;
+  }
+  saveSub({ expiresAt: expiresAt, key: demoKey, plan: selected.days, price: selected.price, pending: false });
+  toast('Доступ активирован');
+  pushTerm('path ok');
+}
+
+function copyKey() {
+  const sub = loadSub();
+  if (!sub || !sub.key) return;
+  navigator.clipboard.writeText(sub.key).then(function () {
+    toast('Скопировано');
+    pushTerm('key · copied');
+    try {
+      if (Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
+        Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      }
+    } catch (e) {}
+  });
+}
+
+loadSub();
+</script>
+</body>
+</html>
