@@ -1,0 +1,9 @@
+{$BASE_HOST} {
+  encode zstd gzip
+  reverse_proxy vph:3000
+}
+
+{$CRYPTO_HOST} {
+  encode zstd gzip
+  reverse_proxy vph:3000
+}

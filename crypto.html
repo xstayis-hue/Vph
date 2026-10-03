@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07090d">
+  <title>Vph · Crypto checkout</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07090d;
+      --card: rgba(16, 20, 28, .68);
+      --line: rgba(0, 200, 210, .18);
+      --text: #d7e0e8;
+      --mute: #768291;
+      --gold: #c9a04a;
+      --cyan: #42dce3;
+      --bad: #d77979;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 22px 16px calc(32px + env(safe-area-inset-bottom));
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 85% 48% at 50% -8%, rgba(0, 180, 200, .12), transparent 60%),
+        linear-gradient(180deg, #0e1218, var(--bg) 65%, #040508);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    main { width: min(100%, 440px); margin: 0 auto; }
+    .brand { display: flex; align-items: center; gap: 11px; margin-bottom: 25px; }
+    .mark {
+      display: grid; width: 40px; aspect-ratio: 1; place-items: center;
+      border: 1px solid var(--line); border-radius: 13px;
+      color: var(--cyan); background: rgba(0, 0, 0, .35);
+      box-shadow: 0 0 20px rgba(0, 200, 210, .08);
+    }
+    .mark svg { width: 22px; }
+    h1 { margin: 0; color: #e8eef4; font-size: 18px; letter-spacing: 1px; }
+    .eyebrow { margin-top: 3px; color: rgba(0, 200, 210, .62); font-size: 10px; letter-spacing: 1.5px; }
+    .panel {
+      margin-bottom: 13px; padding: 17px 15px; border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 16px; background: var(--card); box-shadow: 0 8px 32px rgba(0, 0, 0, .28);
+      backdrop-filter: blur(20px);
+    }
+    h2 { margin: 0 0 13px; color: var(--mute); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; }
+    .note { color: var(--mute); font-size: 12px; line-height: 1.6; }
+    .plan {
+      display: block; width: 100%; margin: 8px 0; padding: 13px;
+      border: 1px solid rgba(255, 255, 255, .08); border-radius: 12px;
+      color: inherit; background: rgba(0, 0, 0, .22); font: inherit; text-align: left;
+    }
+    .plan.selected { border-color: rgba(201, 160, 74, .52); background: rgba(201, 160, 74, .09); }
+    .plan:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .price { margin-top: 3px; color: var(--gold); font-size: 14px; font-weight: 700; }
+    .action {
+      display: block; width: 100%; margin-top: 13px; padding: 14px;
+      border: 0; border-radius: 12px; color: #140f08; background: linear-gradient(135deg, #d4a84e, #b88830);
+      font: inherit; font-weight: 700; text-align: center; text-decoration: none;
+    }
+    .action:disabled { opacity: .45; }
+    .secondary { color: var(--text); background: rgba(0, 0, 0, .28); border: 1px solid rgba(255, 255, 255, .12); }
+    .terms-consent { display: flex; align-items: flex-start; gap: 9px; margin-top: 13px; color: var(--mute); font-size: 11px; line-height: 1.5; }
+    .terms-consent input { margin: 2px 0 0; accent-color: var(--gold); flex-shrink: 0; }
+    .terms-consent a { color: var(--gold); text-underline-offset: 3px; }
+    .terms-consent a[hidden] { display: none; }
+    .status { color: var(--cyan); font-size: 13px; line-height: 1.55; }
+    .status.error { color: var(--bad); }
+    .key {
+      display: none; margin-top: 12px; padding: 12px; border: 1px solid var(--line);
+      border-radius: 12px; background: rgba(0, 0, 0, .3); font: 11px/1.6 ui-monospace, Consolas, monospace;
+      overflow-wrap: anywhere;
+    }
+    .key.show { display: block; }
+    .foot { padding: 12px; color: #596775; font-size: 10px; line-height: 1.6; text-align: center; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z"/>
+          <path d="M12 11v4M12 8.5h.01"/>
+        </svg>
+      </div>
+      <div><h1>Vph</h1><div class="eyebrow">EXTERNAL CRYPTO CHECKOUT</div></div>
+    </header>
+
+    <section class="panel">
+      <h2>Криптооплата</h2>
+      <p class="note">Это отдельный сайт для оплаты USDT через Crypto Pay. Для покупки внутри Telegram используй оплату Stars в приложении Vph.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Выбери срок</h2>
+      <button class="plan selected" type="button" data-days="30" aria-pressed="true">
+        30 дней <div class="price" id="price-30">Загрузка…</div>
+      </button>
+      <button class="plan" type="button" data-days="90" aria-pressed="false">
+        90 дней <div class="price" id="price-90">Загрузка…</div>
+      </button>
+      <button class="plan" type="button" data-days="180" aria-pressed="false">
+        180 дней <div class="price" id="price-180">Загрузка…</div>
+      </button>
+      <button class="action" id="buy-button" type="button" disabled>Проверяю оплату…</button>
+      <label class="terms-consent">
+        <input id="terms-checkbox" type="checkbox" disabled>
+        <span>Я принимаю <a id="terms-link" hidden target="_blank" rel="noopener noreferrer">условия сервиса и возврата</a><span id="terms-unavailable">условия ещё не опубликованы</span>.</span>
+      </label>
+      <a class="action secondary" id="invoice-link" hidden target="_blank" rel="noopener noreferrer">Открыть Crypto Pay</a>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+      <div class="key" id="subscription-key" aria-label="Ссылка подписки"></div>
+      <button class="action secondary" id="copy-button" type="button" hidden>Скопировать ссылку</button>
+      <button class="action secondary" id="retry-button" type="button" hidden>Повторить выдачу доступа</button>
+    </section>
+    <footer class="foot">Не закрывай эту страницу до подтверждения платежа и выдачи ключа. Ссылка подписки даёт доступ к VPN — не пересылай её другим.</footer>
+  </main>
+  <script src="/crypto.js" defer></script>
+</body>
+</html>

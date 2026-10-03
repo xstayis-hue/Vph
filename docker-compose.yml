@@ -1,0 +1,36 @@
+services:
+  vph:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_PATH: /data/vph.sqlite
+    expose:
+      - "3000"
+    volumes:
+      - vph_data:/data
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      BASE_HOST: ${BASE_HOST:?Set BASE_HOST in .env}
+      CRYPTO_HOST: ${CRYPTO_HOST:?Set CRYPTO_HOST in .env}
+    depends_on:
+      - vph
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  vph_data:
+  caddy_data:
+  caddy_config:

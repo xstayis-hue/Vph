@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-deployment="static">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
@@ -103,6 +103,7 @@ body::after{
 }
 @keyframes ping-dot{0%,100%{opacity:1}50%{opacity:.35}}
 .ping-hud .sep{opacity:.4}
+.ping-hud .pd.offline{background:var(--bad);box-shadow:0 0 8px rgba(192,96,96,.55);animation:none}
 
 
 /* liquid glass panels */
@@ -190,11 +191,15 @@ body::after{
 @keyframes tunnel-move{0%{transform:translateX(-120%)}100%{transform:translateX(380%)}}
 
 .plan{
+  display:block;width:100%;text-align:left;color:inherit;font-family:inherit;
   padding:12px 12px;border-radius:12px;margin-bottom:8px;cursor:pointer;
   border:1px solid rgba(255,255,255,.07);background:rgba(0,0,0,.22);
   transition:border-color .2s,background .2s,box-shadow .2s;
 }
 .plan:active{transform:scale(.99)}
+.plan:focus-visible,.btn:focus-visible,.btn-secondary:focus-visible,.store-btn:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;
+}
 .plan.selected{
   border-color:rgba(201,160,74,.4);
   background:rgba(201,160,74,.08);
@@ -212,6 +217,14 @@ body::after{
   box-shadow:0 4px 24px rgba(201,160,74,.22);
 }
 .btn:active{transform:scale(.98);opacity:.92}
+.btn:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
+.terms-consent{
+  display:flex;align-items:flex-start;gap:9px;margin-top:13px;
+  color:var(--mute);font-size:11px;line-height:1.5;
+}
+.terms-consent input{margin:2px 0 0;accent-color:var(--accent);flex-shrink:0}
+.terms-consent a{color:var(--accent);text-underline-offset:3px}
+.terms-consent a[hidden]{display:none}
 
 /* glass key card */
 .key-card{
@@ -288,6 +301,9 @@ body::after{
   color:#c8d0dc;box-shadow:0 12px 40px rgba(0,0,0,.55);max-width:90%;
   backdrop-filter:blur(12px);
 }
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}
+}
 </style>
 </head>
 <body>
@@ -311,7 +327,7 @@ body::after{
         <div class="sub" id="node-sub">node · sealed</div>
       </div>
     </div>
-    <div class="ping-hud" id="ping-hud" aria-label="ping"><span class="pd"></span><span id="ping-ms">—</span> ms<span class="sep">·</span><span id="ping-utc">--:--Z</span></div>
+    <div class="ping-hud" id="api-hud" aria-label="Статус API"><span class="pd offline" id="api-dot"></span><span>API</span><span id="api-state">—</span></div>
   </div>
 
   <div class="panel hero air-idle" id="hero">
@@ -323,38 +339,44 @@ body::after{
 
   <div class="panel">
     <h2>Тариф</h2>
-    <div class="plan selected" data-days="30" data-price="299" onclick="selectPlan(this)">
+    <button class="plan selected" type="button" data-days="30" aria-pressed="true">
       <div class="name">30 дней</div>
-      <div class="price">299 <small>₽</small></div>
-      <div class="meta">до 5 устройств · безлимит</div>
-    </div>
-    <div class="plan" data-days="90" data-price="749" onclick="selectPlan(this)">
+      <div class="price" id="price-30">Загрузка цены…</div>
+      <div class="meta">доступ на 30 дней</div>
+    </button>
+    <button class="plan" type="button" data-days="90" aria-pressed="false">
       <div class="name">90 дней</div>
-      <div class="price">749 <small>₽</small></div>
-      <div class="meta">выгоднее · 3 месяца</div>
-    </div>
-    <div class="plan" data-days="180" data-price="1290" onclick="selectPlan(this)">
+      <div class="price" id="price-90">Загрузка цены…</div>
+      <div class="meta">доступ на 90 дней</div>
+    </button>
+    <button class="plan" type="button" data-days="180" aria-pressed="false">
       <div class="name">180 дней</div>
-      <div class="price">1290 <small>₽</small></div>
-      <div class="meta">полгода доступа</div>
-    </div>
-    <button class="btn" type="button" onclick="requestAccess()">Оформить</button>
+      <div class="price" id="price-180">Загрузка цены…</div>
+      <div class="meta">доступ на 180 дней</div>
+    </button>
+    <button class="btn" id="buy-btn" type="button" disabled>Загрузка…</button>
+    <label class="terms-consent" id="terms-consent">
+      <input id="terms-checkbox" type="checkbox" disabled>
+      <span>Я принимаю <a id="terms-link" hidden target="_blank" rel="noopener noreferrer">условия сервиса и возврата</a><span id="terms-unavailable">условия ещё не опубликованы</span>.</span>
+    </label>
+    <p class="happ-hint" id="payment-hint" aria-live="polite">Проверяю доступность сервера…</p>
   </div>
 
   <div class="panel">
     <h2>Ключ узла</h2>
-    <button class="btn-secondary" type="button" id="copy-btn" disabled onclick="copyKey()">Скопировать ссылку</button>
+    <button class="btn-secondary" type="button" id="copy-btn" disabled>Скопировать ссылку</button>
     <div class="key-card" id="key-box">
       <div class="label">serial · happ link</div>
-      <div class="serial" id="key-serial"></div>
+      <div class="serial" id="key-serial" aria-live="polite"></div>
     </div>
+    <button class="btn-secondary" type="button" id="retry-btn" hidden>Повторить выдачу доступа</button>
   </div>
 
   <div class="panel happ-panel">
     <h2>Скачать Happ</h2>
     <div class="store-row">
-      <a class="store-btn" href="#" onclick="openStore('android');return false">Google Play<span>Android</span></a>
-      <a class="store-btn" href="#" onclick="openStore('ios');return false">App Store<span>iPhone / iPad</span></a>
+      <a class="store-btn" href="https://play.google.com/store/apps/details?id=com.happproxy" target="_blank" rel="noopener noreferrer">Google Play<span>Android</span></a>
+      <a class="store-btn" href="https://www.happ.su/main" target="_blank" rel="noopener noreferrer">App Store<span>iPhone / iPad</span></a>
     </div>
     <p class="happ-hint">Официальный клиент Happ · Proxy Utility. В RU App Store иногда нет в поиске — откроется сайт разработчика.</p>
   </div>
@@ -369,242 +391,12 @@ body::after{
     </ol>
   </div>
 
-  <div class="foot">v0.2 · Vph · corridor</div>
+  <div class="foot">v0.3 · Vph · corridor</div>
 </div>
 
-<div class="term-log"><span class="tl-dim">&gt;</span> <span id="term-log-txt">handshake…</span><span class="tl-cursor">_</span></div>
-<div id="toast"></div>
+<div class="term-log" aria-live="polite"><span class="tl-dim">&gt;</span> <span id="term-log-txt">Vph API · offline</span><span class="tl-cursor">_</span></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
-<script>
-const APPS_SCRIPT_URL = '';
-const HAPP_ANDROID = 'https://play.google.com/store/apps/details?id=com.happproxy';
-const HAPP_IOS = 'https://www.happ.su/main';
-
-const storage = (() => {
-  try { return localStorage; } catch {
-    const d = {};
-    return { getItem: k => d[k] || null, setItem: (k, v) => { d[k] = v; } };
-  }
-})();
-
-let tgUser = null, selected = { days: 30, price: 299 };
-if (window.Telegram && Telegram.WebApp) {
-  try {
-    Telegram.WebApp.ready();
-    Telegram.WebApp.expand();
-    try { Telegram.WebApp.setHeaderColor('#07090d'); } catch (e) {}
-  } catch (e) {}
-  tgUser = Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user || null;
-}
-
-const uid = tgUser && tgUser.id
-  ? String(tgUser.id)
-  : (storage.getItem('vph_uid') || ('L' + Math.floor(10000 + Math.random() * 90000)));
-storage.setItem('vph_uid', uid);
-
-const termLines = ['handshake…', 'path ok', 'tunnel idle…', 'node · sealed', 'await link…', 'cipher ready'];
-let termI = 0;
-function pushTerm(msg) {
-  const t = document.getElementById('term-log-txt');
-  if (t) t.textContent = msg;
-}
-setInterval(function () {
-  pushTerm(termLines[termI]);
-  termI = (termI + 1) % termLines.length;
-}, 3200);
-
-function toast(m) {
-  const t = document.getElementById('toast');
-  t.textContent = m;
-  t.style.display = 'block';
-  setTimeout(function () { t.style.display = 'none'; }, 2200);
-}
-function openLink(url) {
-  try {
-    if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
-      Telegram.WebApp.openLink(url);
-      return;
-    }
-  } catch (e) {}
-  window.open(url, '_blank', 'noopener');
-}
-function openStore(which) {
-  openLink(which === 'android' ? HAPP_ANDROID : HAPP_IOS);
-}
-
-function selectPlan(el) {
-  try {
-    if (Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
-      Telegram.WebApp.HapticFeedback.selectionChanged();
-    }
-  } catch (e) {}
-  document.querySelectorAll('.plan').forEach(function (p) { p.classList.remove('selected'); });
-  el.classList.add('selected');
-  selected = {
-    days: parseInt(el.getAttribute('data-days'), 10),
-    price: parseInt(el.getAttribute('data-price'), 10)
-  };
-  pushTerm('plan · ' + selected.days + 'd');
-}
-
-function setAir(mode) {
-  const hero = document.getElementById('hero');
-  const sub = document.getElementById('node-sub');
-  hero.classList.remove('air-idle', 'air-on', 'air-off');
-  if (mode === 'on') {
-    hero.classList.add('air-on');
-    sub.textContent = 'tunnel · live';
-  } else if (mode === 'off') {
-    hero.classList.add('air-off');
-    sub.textContent = 'node · expired';
-  } else {
-    hero.classList.add('air-idle');
-    sub.textContent = 'node · sealed';
-  }
-}
-
-function loadSub() {
-  const raw = storage.getItem('vph_sub_' + uid);
-  const dot = document.getElementById('dot');
-  const st = document.getElementById('state-text');
-  const until = document.getElementById('until');
-  const keyBox = document.getElementById('key-box');
-  const keySerial = document.getElementById('key-serial');
-  const copyBtn = document.getElementById('copy-btn');
-
-  if (!raw) {
-    dot.className = 'dot idle';
-    st.textContent = 'Не активна';
-    until.textContent = '—';
-    keyBox.classList.remove('show');
-    copyBtn.disabled = true;
-    setAir('idle');
-    return null;
-  }
-
-  const sub = JSON.parse(raw);
-  const end = new Date(sub.expiresAt);
-  const hasKey = !!(sub.key && String(sub.key).trim());
-  const notExpired = end.getTime() > Date.now();
-
-  if (hasKey && notExpired) {
-    dot.className = 'dot on';
-    st.textContent = 'Активна';
-    until.textContent = end.toLocaleDateString('ru-RU');
-    keySerial.textContent = sub.key;
-    keyBox.classList.add('show');
-    copyBtn.disabled = false;
-    setAir('on');
-  } else if (hasKey && !notExpired) {
-    dot.className = 'dot off';
-    st.textContent = 'Истекла';
-    until.textContent = end.toLocaleDateString('ru-RU');
-    keyBox.classList.remove('show');
-    copyBtn.disabled = true;
-    setAir('off');
-  } else {
-    dot.className = 'dot idle';
-    st.textContent = 'Не активна';
-    until.textContent = sub.expiresAt ? end.toLocaleDateString('ru-RU') : '—';
-    keyBox.classList.remove('show');
-    copyBtn.disabled = true;
-    setAir('idle');
-  }
-  return sub;
-}
-
-function saveSub(sub) {
-  storage.setItem('vph_sub_' + uid, JSON.stringify(sub));
-  
-function tickPing(){
-  var el=document.getElementById('ping-ms');
-  if(el) el.textContent=String(10+Math.floor(Math.random()*38));
-  var u=document.getElementById('ping-utc');
-  if(u){
-    var d=new Date();
-    u.textContent=String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0')+'Z';
-  }
-}
-tickPing();
-setInterval(tickPing,1000);
-
-loadSub();
-}
-
-function requestAccess() {
-  try {
-    if (Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
-      Telegram.WebApp.HapticFeedback.impactOccurred('medium');
-    }
-  } catch (e) {}
-  pushTerm('request · pending');
-  if (APPS_SCRIPT_URL) {
-    fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        action: 'subscribe',
-        telegramId: uid,
-        username: (tgUser && tgUser.username) || '',
-        days: selected.days,
-        price: selected.price,
-        timestamp: new Date().toISOString()
-      })
-    }).catch(function () {});
-  }
-  const demoKey = storage.getItem('vph_demo_key') || '';
-  const expiresAt = new Date(Date.now() + selected.days * 864e5).toISOString();
-  if (!demoKey) {
-    toast('Оплата и выдача ключа — после настройки панели');
-    saveSub({ expiresAt: expiresAt, key: '', plan: selected.days, price: selected.price, pending: true });
-    return;
-  }
-  saveSub({ expiresAt: expiresAt, key: demoKey, plan: selected.days, price: selected.price, pending: false });
-  toast('Доступ активирован');
-  pushTerm('path ok');
-}
-
-function copyKey() {
-  const sub = 
-function tickPing(){
-  var el=document.getElementById('ping-ms');
-  if(el) el.textContent=String(10+Math.floor(Math.random()*38));
-  var u=document.getElementById('ping-utc');
-  if(u){
-    var d=new Date();
-    u.textContent=String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0')+'Z';
-  }
-}
-tickPing();
-setInterval(tickPing,1000);
-
-loadSub();
-  if (!sub || !sub.key) return;
-  navigator.clipboard.writeText(sub.key).then(function () {
-    toast('Скопировано');
-    pushTerm('key · copied');
-    try {
-      if (Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
-        Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-      }
-    } catch (e) {}
-  });
-}
-
-
-function tickPing(){
-  var el=document.getElementById('ping-ms');
-  if(el) el.textContent=String(10+Math.floor(Math.random()*38));
-  var u=document.getElementById('ping-utc');
-  if(u){
-    var d=new Date();
-    u.textContent=String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0')+'Z';
-  }
-}
-tickPing();
-setInterval(tickPing,1000);
-
-loadSub();
-</script>
+<script src="./app.js" defer></script>
 </body>
 </html>
