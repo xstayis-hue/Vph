@@ -706,4 +706,37 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       process.exit(0);
     }));
   }
+
+  // Опциональный автосайтап: кнопка мини-аппа в чате бота.
+  // Ставится только при явном VPH_MENU_APP_URL — иначе не трогаем кнопку,
+  // настроенную вручную через BotFather.
+  if (config.botToken && process.env.VPH_MENU_APP_URL) {
+    const menuAppUrl = process.env.VPH_MENU_APP_URL.replace(/\/+$/, '/');
+    const setupMenu = async () => {
+      const call = async (method, body) => {
+        const response = await fetch(`https://api.telegram.org/bot${config.botToken}/${method}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(10000)
+        });
+        return response.json().catch(() => ({}));
+      };
+      const button = await call('setChatMenuButton', {
+        menu_button: {
+          type: 'web_app',
+          text: process.env.VPH_MENU_BUTTON_TEXT || 'Открыть VPH',
+          web_app: { url: menuAppUrl }
+        }
+      });
+      const commands = await call('setMyCommands', {
+        commands: [{ command: 'start', description: 'Открыть VPH' }]
+      });
+      console.log(
+        `[vph] menu button ${button.ok ? 'set' : 'failed: ' + (button.description || '?')}, ` +
+        `commands ${commands.ok ? 'set' : 'failed: ' + (commands.description || '?')}`
+      );
+    };
+    setupMenu().catch((error) => console.warn('[vph] menu setup error:', String(error)));
+  }
 }
